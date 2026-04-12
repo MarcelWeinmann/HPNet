@@ -69,7 +69,7 @@ class ArgoverseV1Dataset(Dataset):
         return self._processed_paths
 
     def process(self) -> None:
-        map_api = ArgoverseMap()
+        map_api = ArgoverseMap(root=os.path.join(self.root, 'map_files'))
         for raw_path in tqdm(self.raw_paths):
             df = pd.read_csv(raw_path)
             data = dict()      
