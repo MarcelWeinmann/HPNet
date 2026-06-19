@@ -113,7 +113,7 @@ class Backbone(nn.Module):
         t2m_edge_attr_embs = self.t2m_emb_layer(input=t2m_edge_attr_input)
 
         #l2m edge
-        l2m_position_l = data['lane']['position']                       #[(M1,...,Mb),2]
+        l2m_position_l = data['lane']['position'][:, :2]                #[(M1,...,Mb),2]
         l2m_position_m = m_position.reshape(-1,2)                       #[(N1,...,Nb)*H*K,2]
         l2m_heading_l = data['lane']['heading']                         #[(M1,...,Mb)]
         l2m_heading_m = m_heading.reshape(-1)                           #[(N1,...,Nb)]
@@ -227,7 +227,7 @@ class Backbone(nn.Module):
         t2n_edge_attr_embs = self.t2m_emb_layer(input=t2n_edge_attr_input)
 
         #l2n edge
-        l2n_position_l = data['lane']['position']                       #[(M1,...,Mb),2]
+        l2n_position_l = data['lane']['position'][:, :2]                #[(M1,...,Mb),2]
         l2n_position_n = n_position.reshape(-1,2)                       #[(N1,...,Nb)*H*K,2]
         l2n_heading_l = data['lane']['heading']                         #[(M1,...,Mb)]
         l2n_heading_n = n_heading.reshape(-1)                           #[(N1,...,Nb)*H*K]

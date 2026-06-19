@@ -30,7 +30,7 @@ class MapEncoder(nn.Module):
 
         self._l2l_edge_type = ['adjacent', 'predecessor', 'successor']
 
-        self.c_emb_layer = TwoLayerMLP(input_dim=1, hidden_dim=hidden_dim, output_dim=hidden_dim)
+        self.c_emb_layer = TwoLayerMLP(input_dim=2, hidden_dim=hidden_dim, output_dim=hidden_dim)
         self.l_emb_layer = TwoLayerMLP(input_dim=4, hidden_dim=hidden_dim, output_dim=hidden_dim)
 
         self.c2l_emb_layer = TwoLayerMLP(input_dim=3, hidden_dim=hidden_dim, output_dim=hidden_dim)
@@ -42,9 +42,16 @@ class MapEncoder(nn.Module):
         self.apply(init_weights)
 
     def forward(self, data: Batch) -> torch.Tensor:
-        #embedding
+        # embedding
         c_length = data['centerline']['length']
-        c_embs = self.c_emb_layer(input=c_length.unsqueeze(-1))        #[(C1,...,Cb),D]
+        
+        # EXTRACT VELOCITY: The dataloader populated the 3rd dimension with velocity
+        c_position_full = data['centerline']['position']       # [(C1,...,Cb), 3]
+        c_velocity = c_position_full[:, 2]                     # [(C1,...,Cb)]
+        
+        # Combine length and velocity as the node feature input
+        c_input = torch.stack([c_length, c_velocity], dim=-1)  # [(C1,...,Cb), 2]
+        c_embs = self.c_emb_layer(input=c_input)               # [(C1,...,Cb), D]
 
         l_length = data['lane']['length']
         l_is_intersection = data['lane']['is_intersection']
@@ -53,10 +60,12 @@ class MapEncoder(nn.Module):
         l_input = torch.stack([l_length, l_is_intersection, l_turn_direction, l_traffic_control], dim=-1)        #[(M1,...,Mb),4]
         l_embs = self.l_emb_layer(input=l_input)                      #[(M1,...,Mb),D]
 
-        #edge
-        #c2l
-        c2l_position_c = data['centerline']['position']             #[(C1,...,Cb),2]
-        c2l_position_l = data['lane']['position']                   #[(M1,...,Mb),2]
+        # edge
+        # c2l
+        
+        # SLICE TO 2D: Prevent transform_point_to_local_coordinate from crashing
+        c2l_position_c = c_position_full[:, :2]                     #[(C1,...,Cb),2]
+        c2l_position_l = data['lane']['position'][:, :2]            #[(M1,...,Mb),2]
         c2l_heading_c = data['centerline']['heading']               #[(C1,...,Cb)]
         c2l_heading_l = data['lane']['heading']                     #[(M1,...,Mb)]
         c2l_edge_index = data['centerline', 'lane']['centerline_to_lane_edge_index']    #[2,(C1,...,Cb)]
@@ -67,7 +76,7 @@ class MapEncoder(nn.Module):
         c2l_edge_attr_embs = self.c2l_emb_layer(input = c2l_edge_attr_input)
 
         #l2l
-        l2l_position = data['lane']['position']                     #[(M1,...,Mb),2]
+        l2l_position = data['lane']['position'][:, :2]              #[(M1,...,Mb),2]
         l2l_heading = data['lane']['heading']                       #[(M1,...,Mb)]
         l2l_edge_index = []
         l2l_edge_attr_type = []

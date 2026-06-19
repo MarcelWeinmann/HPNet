@@ -27,6 +27,7 @@ class ArgoverseV1DataModule(pl.LightningDataModule):
                  num_historical_steps: int = 20,
                  num_future_steps: int = 30,
                  margin: float = 50,
+                 use_raceline_velocity: bool = False,
                  **kwargs) -> None:
         super(ArgoverseV1DataModule, self).__init__()
         self.root = root
@@ -41,14 +42,15 @@ class ArgoverseV1DataModule(pl.LightningDataModule):
         self.num_historical_steps = num_historical_steps
         self.num_future_steps = num_future_steps
         self.margin = margin
+        self.use_raceline_velocity = use_raceline_velocity
 
     def prepare_data(self) -> None:
-        ArgoverseV1Dataset(self.root, 'train', self.train_transform, self.num_historical_steps, self.num_future_steps, self.margin)
-        ArgoverseV1Dataset(self.root, 'val', self.val_transform, self.num_historical_steps, self.num_future_steps, self.margin)
+        ArgoverseV1Dataset(self.root, 'train', self.train_transform, self.num_historical_steps, self.num_future_steps, self.margin, self.use_raceline_velocity)
+        ArgoverseV1Dataset(self.root, 'val', self.val_transform, self.num_historical_steps, self.num_future_steps, self.margin, self.use_raceline_velocity)
 
     def setup(self, stage: Optional[str] = None) -> None:
-        self.train_dataset = ArgoverseV1Dataset(self.root, 'train', self.train_transform, self.num_historical_steps, self.num_future_steps, self.margin)
-        self.val_dataset = ArgoverseV1Dataset(self.root, 'val', self.val_transform, self.num_historical_steps, self.num_future_steps, self.margin)
+        self.train_dataset = ArgoverseV1Dataset(self.root, 'train', self.train_transform, self.num_historical_steps, self.num_future_steps, self.margin, self.use_raceline_velocity)
+        self.val_dataset = ArgoverseV1Dataset(self.root, 'val', self.val_transform, self.num_historical_steps, self.num_future_steps, self.margin, self.use_raceline_velocity)
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.train_batch_size, shuffle=self.shuffle,

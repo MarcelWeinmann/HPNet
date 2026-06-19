@@ -24,7 +24,8 @@ class ArgoverseV1Dataset(Dataset):
                  transform: Optional[Callable] = None,
                  num_historical_steps: int = 20,
                  num_future_steps:int = 30,
-                 margin: float = 50) -> None:
+                 margin: float = 50,
+                 use_raceline_velocity: bool = False) -> None:
         self.root = root
 
         if split == 'train':
@@ -44,6 +45,7 @@ class ArgoverseV1Dataset(Dataset):
         self.num_future_steps = num_future_steps
         self.num_steps = num_historical_steps + num_future_steps
         self.margin = margin
+        self.use_raceline_velocity = use_raceline_velocity
 
         self._turn_direction_type = ['NONE', 'LEFT', 'RIGHT']
         super(ArgoverseV1Dataset, self).__init__(root=root, transform=transform)
@@ -151,7 +153,7 @@ class ArgoverseV1Dataset(Dataset):
         lane_ids = map_api.get_lane_ids_in_xy_bbox((left_boundary + right_boundary) / 2, (down_boundary + up_boundary) / 2, city, max((right_boundary - left_boundary) / 2, (up_boundary - down_boundary) / 2) + margin)
         
         num_lanes = len(lane_ids)
-        lane_position = torch.zeros(num_lanes, 2, dtype=torch.float)
+        lane_position = torch.zeros(num_lanes, 3, dtype=torch.float)
         lane_heading = torch.zeros(num_lanes, dtype=torch.float)
         lane_length = torch.zeros(num_lanes, dtype=torch.float)
         lane_is_intersection = torch.zeros(num_lanes, dtype=torch.uint8)
@@ -169,10 +171,14 @@ class ArgoverseV1Dataset(Dataset):
         for lane_id in lane_ids: 
             lane_idx = lane_ids.index(lane_id)
 
-            centerlines = torch.from_numpy(map_api.get_lane_segment_centerline(lane_id, city)[:, :2]).float()
+            centerlines = torch.from_numpy(map_api.get_lane_segment_centerline(lane_id, city, return_velocity=True)[:, [0, 1, 3]]).float()
+            centerlines[:, 2] = torch.clamp(centerlines[:, 2], min=0.0) / 70.0
+            if not self.use_raceline_velocity:
+                centerlines[:, 2] = 0.0
+
             num_centerlines[lane_idx] = centerlines.size(0) - 1
             centerline_position[lane_idx] = (centerlines[1:] + centerlines[:-1]) / 2
-            centerline_vectors = centerlines[1:] - centerlines[:-1]
+            centerline_vectors = centerlines[1:, :2] - centerlines[:-1, :2]
             centerline_length[lane_idx], centerline_heading[lane_idx] = compute_angles_lengths_2D(centerline_vectors)
 
             lane_length[lane_idx] = centerline_length[lane_idx].sum()
