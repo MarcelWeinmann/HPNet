@@ -22,12 +22,14 @@ if __name__ == '__main__':
     parser.add_argument('--persistent_workers', type=bool, default=True)
     parser.add_argument('--devices', type=int, required=True)
     parser.add_argument('--ckpt_path', type=str, required=True)
+    parser.add_argument('--margin', type=float, default=50)
+    parser.add_argument('--use_raceline_velocity', action='store_true')
     HPNet.add_model_specific_args(parser)
     args = parser.parse_args()
 
     model = HPNet.load_from_checkpoint(checkpoint_path=args.ckpt_path)
     trainer = pl.Trainer(devices=args.devices, accelerator='gpu')
-    val_dataset = ArgoverseV1Dataset(args.root, 'val', transform=LaneRandomOcclusion(0.0))
+    val_dataset = ArgoverseV1Dataset(args.root, 'val', transform=LaneRandomOcclusion(0.0), num_historical_steps=args.num_historical_steps, num_future_steps=args.num_future_steps, margin=args.margin, use_raceline_velocity=args.use_raceline_velocity)
     dataloader = DataLoader(val_dataset, batch_size=args.val_batch_size, shuffle=False,num_workers=args.num_workers, pin_memory=args.pin_memory,persistent_workers=args.persistent_workers)
     trainer.validate(model, dataloader)
 
